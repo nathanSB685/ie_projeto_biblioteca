@@ -3,7 +3,7 @@ const pool = require("../config/db");
 const criarEmprestimo = async (req, res) => {
   const { livro_id } = req.body;
 
-  const usuario_id = req.usuario_id;
+  const usuario_id = req.usuario.id;
 
   if (!livro_id) {
     return res.status(400).json({ erro: "ID do livro é obrigatório." });
