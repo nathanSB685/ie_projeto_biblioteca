@@ -24,7 +24,7 @@ const analisarCapa = async (req, res) => {
           content: [
             {
               type: "text",
-              text: 'Analise a imagem desta capa de livro. Retorne um JSON com os campos "titulo", "autor" e "editora". Se não encontrar alguma informação, deixe a string vazia "".',
+              text: `Analise esta capa de livro e me devolva APENAS um JSON no seguinte formato: { "titulo": "Nome do Livro", "autor": "Nome do Autor", "editora": "Nome da Editora", "genero": "Tente deduzir o gênero literário (ex: Ficção Científica, Romance, Clássicos, Ciências Exatas). Se não souber, escreva 'Não identificado'" }`,
             },
             {
               type: "image_url",
