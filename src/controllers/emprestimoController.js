@@ -1,26 +1,24 @@
-// Importe a sua conexão com o banco de dados (ajuste o caminho se necessário)
 const pool = require("../config/db");
 
 const criarEmprestimo = async (req, res) => {
-  const { livro_id, usuario_id } = req.body;
+  const { livro_id } = req.body;
 
-  if (!livro_id || !usuario_id) {
-    return res
-      .status(400)
-      .json({ erro: "ID do livro e ID do usuário são obrigatórios." });
+  const usuario_id = req.usuario_id;
+
+  if (!livro_id) {
+    return res.status(400).json({ erro: "ID do livro é obrigatório." });
   }
 
-  // Pega uma "linha direta" exclusiva com o banco para fazer a transação
   const client = await pool.connect();
 
   try {
     // INICIA A TRANSAÇÃO: Daqui pra baixo, nada é salvo até darmos o comando final
     await client.query("BEGIN");
 
-    // 1. Verifica se o livro existe e se tem estoque
+    // Verifica se o livro existe e se tem estoque
     const livroResult = await client.query(
       "SELECT quantidade_disponivel FROM livros WHERE id = $1",
-      [livro_id],
+      [livro_id]
     );
 
     if (livroResult.rows.length === 0) {
@@ -33,20 +31,20 @@ const criarEmprestimo = async (req, res) => {
       throw new Error("Este livro está sem estoque no momento.");
     }
 
-    // 2. Tira uma unidade do estoque na tabela de livros
+    // Tira uma unidade do estoque na tabela de livros
     await client.query(
       "UPDATE livros SET quantidade_disponivel = quantidade_disponivel - 1 WHERE id = $1",
-      [livro_id],
+      [livro_id]
     );
 
-    // 3. Cria a data de devolução para daqui a 7 dias
+    // Cria a data de devolução para daqui a 7 dias
     const dataDevolucao = new Date();
     dataDevolucao.setDate(dataDevolucao.getDate() + 7);
 
-    // 4. Registra o empréstimo na tabela nova
+    // Registra o empréstimo na tabela nova
     const emprestimoResult = await client.query(
       "INSERT INTO emprestimos (livro_id, usuario_id, data_devolucao_prevista) VALUES ($1, $2, $3) RETURNING *",
-      [livro_id, usuario_id, dataDevolucao],
+      [livro_id, usuario_id, dataDevolucao]
     );
 
     // CONFIRMA A TRANSAÇÃO: Salva tudo de uma vez no banco!
@@ -72,7 +70,6 @@ const criarEmprestimo = async (req, res) => {
 
     res.status(500).json({ erro: "Falha interna ao processar o empréstimo." });
   } finally {
-    // Libera a "linha direta" para outras requisições poderem usar
     client.release();
   }
 };
@@ -89,7 +86,7 @@ const devolverLivro = async (req, res) => {
     // 1. Verifica se o empréstimo existe e pega o ID do livro
     const emprestimoResult = await client.query(
       "SELECT livro_id, status FROM emprestimos WHERE id = $1",
-      [id],
+      [id]
     );
 
     if (emprestimoResult.rows.length === 0) {
@@ -105,13 +102,13 @@ const devolverLivro = async (req, res) => {
     // 2. Atualiza o status do empréstimo e carimba a data atual
     await client.query(
       "UPDATE emprestimos SET status = 'DEVOLVIDO', data_devolucao_real = CURRENT_TIMESTAMP WHERE id = $1",
-      [id],
+      [id]
     );
 
     // 3. Devolve o livro para a estante (Estoque + 1)
     await client.query(
       "UPDATE livros SET quantidade_disponivel = quantidade_disponivel + 1 WHERE id = $1",
-      [livro_id],
+      [livro_id]
     );
 
     await client.query("COMMIT"); // Salva tudo
@@ -140,8 +137,6 @@ const meusEmprestimos = async (req, res) => {
   const usuario_id = req.usuario.id;
 
   try {
-    // Usamos o JOIN para juntar a tabela de empréstimos com a de livros
-    // Assim o aluno vê o "Título do Livro" em vez de apenas ver "livro_id: 1"
     const result = await pool.query(
       `
             SELECT 
@@ -157,7 +152,7 @@ const meusEmprestimos = async (req, res) => {
             WHERE e.usuario_id = $1
             ORDER BY e.data_emprestimo DESC
         `,
-      [usuario_id],
+      [usuario_id]
     );
 
     res.json(result.rows);
